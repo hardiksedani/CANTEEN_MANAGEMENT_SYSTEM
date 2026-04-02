@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Staff - Canteen</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    * { font-family: 'Poppins', sans-serif; }
+    .gradient-bg { background: linear-gradient(135deg, #1e3a8a, #1e40af); }
+    .card-anim { animation: slideIn 0.3s ease; }
+    @keyframes slideIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+    .status-badge { display:inline-block; padding:4px 12px; border-radius:999px; font-size:12px; font-weight:700; }
+    .pending { background:#fef3c7; color:#d97706; }
+    .preparing { background:#dbeafe; color:#1d4ed8; }
+    .ready { background:#d1fae5; color:#059669; }
+    .delivered { background:#f0fdf4; color:#16a34a; }
+    .cancelled { background:#fee2e2; color:#dc2626; }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="gradient-bg text-white sticky top-0 z-40 shadow-lg">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-xl">👨‍🍳</div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight">Staff Dashboard</h1>
+          <p class="text-xs text-blue-200">Canteen Order Management</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div id="live-indicator" class="flex items-center gap-1.5 bg-green-500/20 border border-green-400/30 px-3 py-1.5 rounded-full">
+          <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+          <span class="text-xs text-green-300 font-medium">Live</span>
+        </div>
+        <span id="staff-name" class="text-sm font-semibold hidden sm:block"></span>
+        <button onclick="logout()" class="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-xl text-sm transition">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Stats Bar -->
+  <div class="bg-white border-b border-gray-200 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 py-3 grid grid-cols-4 gap-4 text-center">
+      <div>
+        <p class="text-2xl font-bold text-gray-800" id="stat-total">0</p>
+        <p class="text-xs text-gray-500">Total Active</p>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-yellow-500" id="stat-pending">0</p>
+        <p class="text-xs text-gray-500">Pending</p>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-blue-500" id="stat-preparing">0</p>
+        <p class="text-xs text-gray-500">Preparing</p>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-green-500" id="stat-ready">0</p>
+        <p class="text-xs text-gray-500">Ready</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter -->
+  <div class="max-w-6xl mx-auto px-4 py-4">
+    <div class="flex gap-2 flex-wrap">
+      <button onclick="setFilter('all')" id="f-all" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold">All Active</button>
+      <button onclick="setFilter('pending')" id="f-pending" class="bg-white text-gray-600 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 hover:border-yellow-400 transition">⏳ Pending</button>
+      <button onclick="setFilter('preparing')" id="f-preparing" class="bg-white text-gray-600 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 hover:border-blue-400 transition">🔥 Preparing</button>
+      <button onclick="setFilter('ready')" id="f-ready" class="bg-white text-gray-600 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 hover:border-green-400 transition">✅ Ready</button>
+      <button onclick="loadOrders()" class="ml-auto bg-white text-blue-600 border border-blue-200 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-50 transition">↻ Refresh</button>
+    </div>
+  </div>
+
+  <!-- Orders -->
+  <div class="max-w-6xl mx-auto px-4 pb-8">
+    <div id="orders-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    <div id="empty-state" class="hidden text-center py-24">
+      <div class="text-6xl mb-4">🎉</div>
+      <p class="text-xl font-bold text-gray-700">All caught up!</p>
+      <p class="text-gray-400 mt-1">No active orders right now</p>
+    </div>
+  </div>
+
+<script>
+const API = 'http://localhost:5000/api';
+let user = JSON.parse(localStorage.getItem('user') || 'null');
+let allOrders = [];
+let currentFilter = 'all';
+
+if (!user) window.location.href = 'login.html';
+if (user && user.role !== 'staff') {
+  window.location.href = user.role === 'manager' ? 'manager.html' : 'student.html';
+}
+document.getElementById('staff-name').textContent = user.name;
+
+async function loadOrders() {
+  const res = await fetch(`${API}/orders/active`);
+  const data = await res.json();
+  allOrders = data.orders || [];
+  updateStats();
+  renderOrders();
+}
+
+function updateStats() {
+  document.getElementById('stat-total').textContent = allOrders.length;
+  document.getElementById('stat-pending').textContent = allOrders.filter(o => o.status === 'pending').length;
+  document.getElementById('stat-preparing').textContent = allOrders.filter(o => o.status === 'preparing').length;
+  document.getElementById('stat-ready').textContent = allOrders.filter(o => o.status === 'ready').length;
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  ['all','pending','preparing','ready'].forEach(id => {
+    const el = document.getElementById('f-' + id);
+    if (!el) return;
+    el.className = id === f
+      ? 'bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold'
+      : 'bg-white text-gray-600 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 hover:border-blue-400 transition';
+  });
+  renderOrders();
+}
+
+function renderOrders() {
+  const filtered = currentFilter === 'all' ? allOrders : allOrders.filter(o => o.status === currentFilter);
+  const grid = document.getElementById('orders-grid');
+  const empty = document.getElementById('empty-state');
+  if (filtered.length === 0) { grid.innerHTML = ''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+
+  const statusColors = { pending:'border-yellow-300 bg-yellow-50', preparing:'border-blue-300 bg-blue-50', ready:'border-green-300 bg-green-50' };
+  const nextActions = {
+    pending: { label:'🔥 Start Preparing', next:'preparing', color:'bg-blue-500 hover:bg-blue-600' },
+    preparing: { label:'✅ Mark Ready', next:'ready', color:'bg-green-500 hover:bg-green-600' },
+    ready: { label:'🎁 Mark Delivered', next:'delivered', color:'bg-purple-500 hover:bg-purple-600' }
+  };
+
+  grid.innerHTML = filtered.map(o => {
+    const borderClass = statusColors[o.status] || 'border-gray-200 bg-white';
+    const action = nextActions[o.status];
+    const timeAgo = getTimeAgo(o.created_at);
+    return `
+    <div class="rounded-2xl border-2 ${borderClass} p-5 shadow-sm card-anim">
+      <div class="flex justify-between items-start mb-3">
+        <div>
+          <p class="font-bold text-gray-800 text-lg">${o.order_number}</p>
+          <p class="text-sm text-gray-500 font-medium">👤 ${o.student_name || o.customer_name}</p>
+          ${o.student_id ? `<p class="text-xs text-gray-400">${o.student_id}</p>` : ''}
+        </div>
+        <div class="text-right">
+          <span class="status-badge ${o.status}">${o.status.toUpperCase()}</span>
+          <p class="text-xs text-gray-400 mt-1">${timeAgo}</p>
+        </div>
+      </div>
+      
+      <div class="bg-white/60 rounded-xl p-3 mb-3 space-y-1">
+        ${o.items.map(i => `
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-700">${i.item_name} <span class="text-gray-400">× ${i.quantity}</span></span>
+            <span class="font-medium text-gray-700">₹${i.subtotal.toFixed(2)}</span>
+          </div>`).join('')}
+        <div class="border-t border-gray-200 mt-2 pt-2 flex justify-between font-bold">
+          <span>Total</span><span class="text-orange-500">₹${o.total_amount.toFixed(2)}</span>
+        </div>
+      </div>
+
+      ${o.notes ? `<div class="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2 text-xs text-orange-700 mb-3">📝 ${o.notes}</div>` : ''}
+      <div class="flex items-center justify-between text-xs text-gray-400 mb-3">
+        <span>💳 ${o.payment_method}</span>
+        <span>${new Date(o.created_at).toLocaleTimeString()}</span>
+      </div>
+      ${action ? `
+        <button onclick="updateStatus(${o.id},'${action.next}')" class="${action.color} text-white w-full py-2.5 rounded-xl font-bold text-sm transition">
+          ${action.label}
+        </button>` : ''}
+      <button onclick="updateStatus(${o.id},'cancelled')" class="mt-2 w-full py-2 rounded-xl text-xs text-red-400 hover:bg-red-50 transition">Cancel Order</button>
+    </div>`;
+  }).join('');
+}
+
+async function updateStatus(orderId, status) {
+  const res = await fetch(`${API}/orders/status/${orderId}`, {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({status})
+  });
+  const data = await res.json();
+  if (data.success) loadOrders();
+}
+
+function getTimeAgo(dateStr) {
+  const diff = (new Date() - new Date(dateStr)) / 1000;
+  if (diff < 60) return 'Just now';
+  if (diff < 3600) return Math.floor(diff/60) + ' min ago';
+  return Math.floor(diff/3600) + ' hr ago';
+}
+
+function logout() { localStorage.removeItem('user'); window.location.href = 'login.html'; }
+
+loadOrders();
+setInterval(loadOrders, 15000); // Auto refresh every 15 seconds
+</script>
+</body>
+</html>

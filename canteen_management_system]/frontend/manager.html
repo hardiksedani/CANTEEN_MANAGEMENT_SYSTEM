@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Manager - Canteen</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    * { font-family: 'Poppins', sans-serif; }
+    .sidebar { background: linear-gradient(180deg, #111827 0%, #1f2937 100%); }
+    .nav-item { transition: all 0.2s; }
+    .nav-item:hover { background: rgba(255,255,255,0.08); }
+    .nav-item.active { background: linear-gradient(135deg, #f97316, #ef4444); }
+    .stat-card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 10px rgba(0,0,0,0.06); border: 1px solid #f3f4f6; }
+    .status-pending { background:#fef3c7; color:#d97706; }
+    .status-preparing { background:#dbeafe; color:#1d4ed8; }
+    .status-ready { background:#d1fae5; color:#059669; }
+    .status-delivered { background:#ecfdf5; color:#16a34a; }
+    .status-cancelled { background:#fee2e2; color:#dc2626; }
+    .badge { display:inline-block; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:700; text-transform:uppercase; }
+    ::-webkit-scrollbar { width:5px; } ::-webkit-scrollbar-thumb { background:#374151; border-radius:3px; }
+  </style>
+</head>
+<body class="bg-gray-50 flex min-h-screen">
+
+  <!-- Sidebar -->
+  <aside class="sidebar w-64 min-h-screen fixed left-0 top-0 z-30 flex flex-col hidden lg:flex">
+    <div class="p-6 border-b border-white/10">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center text-xl">🍴</div>
+        <div>
+          <p class="font-bold text-white">Canteen Manager</p>
+          <p class="text-xs text-gray-400" id="mgr-name"></p>
+        </div>
+      </div>
+    </div>
+    <nav class="flex-1 p-4 space-y-1">
+      <button onclick="showPage('dashboard')" id="nav-dashboard" class="nav-item active w-full text-left px-4 py-3 rounded-xl text-sm font-semibold text-white flex items-center gap-3">
+        <span>📊</span> Dashboard
+      </button>
+      <button onclick="showPage('orders')" id="nav-orders" class="nav-item w-full text-left px-4 py-3 rounded-xl text-sm font-semibold text-gray-300 flex items-center gap-3">
+        <span>📋</span> All Orders
+      </button>
+      <button onclick="showPage('menu')" id="nav-menu" class="nav-item w-full text-left px-4 py-3 rounded-xl text-sm font-semibold text-gray-300 flex items-center gap-3">
+        <span>🍽️</span> Menu Management
+      </button>
+    </nav>
+    <div class="p-4 border-t border-white/10">
+      <button onclick="logout()" class="w-full text-left px-4 py-3 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-white/10 transition flex items-center gap-3">
+        <span>🚪</span> Logout
+      </button>
+    </div>
+  </aside>
+
+  <!-- Mobile Header -->
+  <div class="lg:hidden fixed top-0 left-0 right-0 z-30 bg-gray-900 text-white px-4 py-3 flex items-center justify-between shadow-lg">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center">🍴</div>
+      <span class="font-bold">Canteen Manager</span>
+    </div>
+    <div class="flex gap-1">
+      <button onclick="showPage('dashboard')" class="px-3 py-1.5 bg-orange-500 rounded-lg text-xs font-semibold">📊</button>
+      <button onclick="showPage('orders')" class="px-3 py-1.5 bg-gray-700 rounded-lg text-xs font-semibold">📋</button>
+      <button onclick="showPage('menu')" class="px-3 py-1.5 bg-gray-700 rounded-lg text-xs font-semibold">🍽️</button>
+      <button onclick="logout()" class="px-3 py-1.5 bg-gray-700 rounded-lg text-xs">🚪</button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="lg:ml-64 flex-1 p-4 lg:p-8 mt-14 lg:mt-0">
+
+    <!-- DASHBOARD PAGE -->
+    <div id="page-dashboard">
+      <div class="mb-8">
+        <h2 class="text-2xl font-bold text-gray-800">Dashboard Overview</h2>
+        <p class="text-gray-400 text-sm mt-1">Real-time canteen performance</p>
+      </div>
+
+      <!-- Stat Cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+        <div class="stat-card col-span-2 lg:col-span-1">
+          <div class="text-3xl mb-2">📦</div>
+          <p class="text-3xl font-bold text-gray-800" id="s-total">0</p>
+          <p class="text-sm text-gray-500 mt-1">Total Orders</p>
+        </div>
+        <div class="stat-card">
+          <div class="text-3xl mb-2">⏳</div>
+          <p class="text-3xl font-bold text-yellow-500" id="s-active">0</p>
+          <p class="text-sm text-gray-500 mt-1">Active</p>
+        </div>
+        <div class="stat-card">
+          <div class="text-3xl mb-2">✅</div>
+          <p class="text-3xl font-bold text-green-500" id="s-delivered">0</p>
+          <p class="text-sm text-gray-500 mt-1">Delivered</p>
+        </div>
+        <div class="stat-card">
+          <div class="text-3xl mb-2">💰</div>
+          <p class="text-2xl font-bold text-orange-500" id="s-revenue">₹0</p>
+          <p class="text-sm text-gray-500 mt-1">Revenue</p>
+        </div>
+        <div class="stat-card">
+          <div class="text-3xl mb-2">🎓</div>
+          <p class="text-3xl font-bold text-blue-500" id="s-students">0</p>
+          <p class="text-sm text-gray-500 mt-1">Students</p>
+        </div>
+        <div class="stat-card">
+          <div class="text-3xl mb-2">🍽️</div>
+          <p class="text-3xl font-bold text-purple-500" id="s-menu">0</p>
+          <p class="text-sm text-gray-500 mt-1">Menu Items</p>
+        </div>
+      </div>
+
+      <!-- Recent Orders on Dashboard -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold text-gray-800">Recent Orders</h3>
+          <button onclick="showPage('orders')" class="text-orange-500 text-sm font-semibold hover:underline">View All →</button>
+        </div>
+        <div id="dash-recent-orders" class="space-y-3"></div>
+      </div>
+    </div>
+
+    <!-- ORDERS PAGE -->
+    <div id="page-orders" class="hidden">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="text-2xl font-bold text-gray-800">All Orders</h2>
+          <p class="text-gray-400 text-sm mt-1">Complete order history & management</p>
+        </div>
+        <button onclick="loadAllOrders()" class="bg-orange-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-orange-600 transition">↻ Refresh</button>
+      </div>
+
+      <!-- Filter -->
+      <div class="flex gap-2 flex-wrap mb-4">
+        <button onclick="filterOrders('all')" id="of-all" class="bg-gray-800 text-white px-4 py-2 rounded-xl text-sm font-semibold">All</button>
+        <button onclick="filterOrders('pending')" id="of-pending" class="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50">Pending</button>
+        <button onclick="filterOrders('preparing')" id="of-preparing" class="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50">Preparing</button>
+        <button onclick="filterOrders('ready')" id="of-ready" class="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50">Ready</button>
+        <button onclick="filterOrders('delivered')" id="of-delivered" class="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50">Delivered</button>
+        <button onclick="filterOrders('cancelled')" id="of-cancelled" class="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50">Cancelled</button>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th class="text-left px-5 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Order</th>
+                <th class="text-left px-5 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Customer</th>
+                <th class="text-left px-5 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Items</th>
+                <th class="text-left px-5 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Amount</th>
+                <th class="text-left px-5 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Payment</th>
+                <th class="text-left px-5 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                <th class="text-left px-5 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Time</th>
+                <th class="text-left px-5 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Action</th>
+              </tr>
+            </thead>
+            <tbody id="orders-tbody" class="divide-y divide-gray-50"></tbody>
+          </table>
+        </div>
+        <div id="orders-empty-msg" class="hidden text-center py-16 text-gray-400">
+          <div class="text-5xl mb-3">📋</div>
+          <p class="font-semibold">No orders found</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- MENU PAGE -->
+    <div id="page-menu" class="hidden">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="text-2xl font-bold text-gray-800">Menu Management</h2>
+          <p class="text-gray-400 text-sm mt-1">Add, edit or remove food items</p>
+        </div>
+        <button onclick="openAddModal()" class="bg-gradient-to-r from-orange-500 to-red-500 text-white px-5 py-2.5 rounded-xl font-semibold hover:opacity-90 transition shadow">+ Add Item</button>
+      </div>
+
+      <div id="menu-grid-mgr" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+    </div>
+
+  </div><!-- end main -->
+
+  <!-- Add/Edit Menu Modal -->
+  <div id="menu-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl">
+      <div class="flex justify-between items-center mb-5">
+        <h3 id="modal-title" class="text-xl font-bold text-gray-800">Add Menu Item</h3>
+        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+      </div>
+      <div class="space-y-4">
+        <input type="hidden" id="edit-id"/>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-semibold text-gray-500 uppercase mb-1 block">Item Name*</label>
+            <input id="m-name" type="text" placeholder="e.g. Masala Dosa" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-300 text-sm"/>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-gray-500 uppercase mb-1 block">Category*</label>
+            <select id="m-cat" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-300 text-sm">
+              <option>South Indian</option><option>Main Course</option><option>Snacks</option>
+              <option>Beverages</option><option>Healthy</option><option>Desserts</option><option>Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-semibold text-gray-500 uppercase mb-1 block">Price (₹)*</label>
+            <input id="m-price" type="number" step="0.5" placeholder="e.g. 45" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-300 text-sm"/>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-gray-500 uppercase mb-1 block">Emoji Icon</label>
+            <input id="m-emoji" type="text" placeholder="🍽️" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-300 text-sm"/>
+          </div>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-gray-500 uppercase mb-1 block">Description</label>
+          <textarea id="m-desc" rows="2" placeholder="Short description..." class="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-300 text-sm resize-none"></textarea>
+        </div>
+        <div id="avail-row" class="hidden flex items-center gap-2">
+          <input type="checkbox" id="m-avail" class="w-4 h-4 accent-orange-500"/>
+          <label for="m-avail" class="text-sm text-gray-600">Available (visible to students)</label>
+        </div>
+      </div>
+      <div id="modal-msg" class="hidden mt-3 text-sm text-center font-medium p-2 rounded-xl"></div>
+      <div class="flex gap-3 mt-5">
+        <button onclick="closeModal()" class="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-semibold hover:bg-gray-200 transition">Cancel</button>
+        <button onclick="saveMenuItem()" class="flex-1 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-semibold hover:opacity-90 transition">Save</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const API = 'http://localhost:5000/api';
+let user = JSON.parse(localStorage.getItem('user') || 'null');
+let allOrdersData = [];
+let ordersFilter = 'all';
+
+if (!user) window.location.href = 'login.html';
+if (user && user.role !== 'manager') {
+  window.location.href = user.role === 'staff' ? 'staff.html' : 'student.html';
+}
+document.getElementById('mgr-name').textContent = user.name;
+
+// ── PAGE NAVIGATION ──────────────────────────────────
+function showPage(page) {
+  ['dashboard','orders','menu'].forEach(p => {
+    document.getElementById('page-' + p).classList.toggle('hidden', p !== page);
+    const nav = document.getElementById('nav-' + p);
+    if (nav) nav.className = p === page
+      ? 'nav-item active w-full text-left px-4 py-3 rounded-xl text-sm font-semibold text-white flex items-center gap-3'
+      : 'nav-item w-full text-left px-4 py-3 rounded-xl text-sm font-semibold text-gray-300 flex items-center gap-3';
+  });
+  if (page === 'dashboard') loadDashboard();
+  if (page === 'orders') loadAllOrders();
+  if (page === 'menu') loadMenuMgr();
+}
+
+// ── DASHBOARD ────────────────────────────────────────
+async function loadDashboard() {
+  const [statsRes, ordersRes] = await Promise.all([
+    fetch(`${API}/stats`), fetch(`${API}/orders/all`)
+  ]);
+  const { stats } = await statsRes.json();
+  const { orders } = await ordersRes.json();
+
+  document.getElementById('s-total').textContent = stats.total_orders;
+  document.getElementById('s-active').textContent = stats.active;
+  document.getElementById('s-delivered').textContent = stats.delivered;
+  document.getElementById('s-revenue').textContent = '₹' + stats.revenue.toFixed(0);
+  document.getElementById('s-students').textContent = stats.students;
+  document.getElementById('s-menu').textContent = stats.menu_count;
+
+  const recent = (orders || []).slice(0, 8);
+  document.getElementById('dash-recent-orders').innerHTML = recent.length === 0
+    ? '<p class="text-gray-400 text-sm text-center py-4">No orders yet</p>'
+    : recent.map(o => `
+      <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 bg-orange-50 rounded-xl flex items-center justify-center text-lg">🍽️</div>
+          <div>
+            <p class="font-semibold text-gray-800 text-sm">${o.order_number}</p>
+            <p class="text-xs text-gray-400">${o.student_name || o.customer_name}</p>
+          </div>
+        </div>
+        <div class="text-right">
+          <p class="font-bold text-orange-500 text-sm">₹${o.total_amount.toFixed(2)}</p>
+          <span class="badge status-${o.status}">${o.status}</span>
+        </div>
+      </div>`).join('');
+}
+
+// ── ALL ORDERS ───────────────────────────────────────
+async function loadAllOrders() {
+  const res = await fetch(`${API}/orders/all`);
+  const data = await res.json();
+  allOrdersData = data.orders || [];
+  renderOrdersTable();
+}
+
+function filterOrders(f) {
+  ordersFilter = f;
+  document.querySelectorAll('[id^="of-"]').forEach(b => {
+    b.className = 'bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50';
+  });
+  document.getElementById('of-' + f).className = 'bg-gray-800 text-white px-4 py-2 rounded-xl text-sm font-semibold';
+  renderOrdersTable();
+}
+
+function renderOrdersTable() {
+  const filtered = ordersFilter === 'all' ? allOrdersData : allOrdersData.filter(o => o.status === ordersFilter);
+  const tbody = document.getElementById('orders-tbody');
+  const empty = document.getElementById('orders-empty-msg');
+  if (filtered.length === 0) { tbody.innerHTML = ''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  const nextMap = { pending:'preparing', preparing:'ready', ready:'delivered' };
+  const nextLabel = { pending:'▶ Prepare', preparing:'✅ Ready', ready:'🎁 Deliver' };
+  tbody.innerHTML = filtered.map(o => `
+    <tr class="hover:bg-gray-50 transition">
+      <td class="px-5 py-3 font-bold text-gray-800 text-sm">${o.order_number}</td>
+      <td class="px-5 py-3">
+        <p class="font-semibold text-gray-700 text-sm">${o.student_name || o.customer_name}</p>
+        <p class="text-xs text-gray-400">${o.student_id || ''}</p>
+      </td>
+      <td class="px-5 py-3 text-sm text-gray-600 max-w-xs">
+        ${o.items.map(i => `${i.item_name}×${i.quantity}`).join(', ')}
+      </td>
+      <td class="px-5 py-3 font-bold text-orange-500">₹${o.total_amount.toFixed(2)}</td>
+      <td class="px-5 py-3 text-sm text-gray-500 capitalize">${o.payment_method}</td>
+      <td class="px-5 py-3"><span class="badge status-${o.status}">${o.status}</span></td>
+      <td class="px-5 py-3 text-xs text-gray-400">${new Date(o.created_at).toLocaleString()}</td>
+      <td class="px-5 py-3">
+        ${nextMap[o.status] ? `<button onclick="mgr_updateStatus(${o.id},'${nextMap[o.status]}')" class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-blue-600 transition">${nextLabel[o.status]}</button>` : '—'}
+      </td>
+    </tr>`).join('');
+}
+
+async function mgr_updateStatus(id, status) {
+  await fetch(`${API}/orders/status/${id}`, {
+    method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status})
+  });
+  loadAllOrders();
+}
+
+// ── MENU MANAGEMENT ──────────────────────────────────
+async function loadMenuMgr() {
+  const res = await fetch(`${API}/menu/all`);
+  const data = await res.json();
+  const grid = document.getElementById('menu-grid-mgr');
+  grid.innerHTML = data.items.map(item => `
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:-translate-y-1 transition-transform">
+      <div class="h-24 ${item.is_available ? 'bg-gradient-to-br from-orange-50 to-red-50' : 'bg-gray-100'} flex items-center justify-center text-5xl">
+        ${item.image_emoji}
+      </div>
+      <div class="p-4">
+        <div class="flex items-start justify-between mb-1">
+          <h3 class="font-bold text-gray-800 text-sm leading-tight">${item.name}</h3>
+          <span class="ml-2 text-xs ${item.is_available ? 'text-green-500 bg-green-50' : 'text-gray-400 bg-gray-100'} px-2 py-0.5 rounded-full font-semibold flex-shrink-0">${item.is_available ? 'On' : 'Off'}</span>
+        </div>
+        <p class="text-xs text-gray-400 mb-1">${item.category}</p>
+        <p class="text-orange-500 font-bold text-lg mb-3">₹${item.price}</p>
+        <div class="flex gap-2">
+          <button onclick="openEditModal(${JSON.stringify(item).replace(/"/g,'&quot;')})" class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-semibold hover:bg-blue-100 transition">✏️ Edit</button>
+          <button onclick="deleteItem(${item.id},'${item.name}')" class="flex-1 py-2 bg-red-50 text-red-500 rounded-xl text-xs font-semibold hover:bg-red-100 transition">🗑️ Delete</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function openAddModal() {
+  document.getElementById('modal-title').textContent = 'Add Menu Item';
+  document.getElementById('edit-id').value = '';
+  document.getElementById('m-name').value = '';
+  document.getElementById('m-price').value = '';
+  document.getElementById('m-desc').value = '';
+  document.getElementById('m-emoji').value = '';
+  document.getElementById('m-cat').value = 'South Indian';
+  document.getElementById('avail-row').classList.add('hidden');
+  document.getElementById('modal-msg').classList.add('hidden');
+  document.getElementById('menu-modal').classList.remove('hidden');
+}
+
+function openEditModal(item) {
+  document.getElementById('modal-title').textContent = 'Edit Menu Item';
+  document.getElementById('edit-id').value = item.id;
+  document.getElementById('m-name').value = item.name;
+  document.getElementById('m-price').value = item.price;
+  document.getElementById('m-desc').value = item.description || '';
+  document.getElementById('m-emoji').value = item.image_emoji || '';
+  document.getElementById('m-cat').value = item.category;
+  document.getElementById('m-avail').checked = !!item.is_available;
+  document.getElementById('avail-row').classList.remove('hidden');
+  document.getElementById('modal-msg').classList.add('hidden');
+  document.getElementById('menu-modal').classList.remove('hidden');
+}
+
+function closeModal() { document.getElementById('menu-modal').classList.add('hidden'); }
+
+async function saveMenuItem() {
+  const id = document.getElementById('edit-id').value;
+  const body = {
+    name: document.getElementById('m-name').value.trim(),
+    category: document.getElementById('m-cat').value,
+    price: parseFloat(document.getElementById('m-price').value),
+    description: document.getElementById('m-desc').value.trim(),
+    image_emoji: document.getElementById('m-emoji').value.trim() || '🍽️',
+    is_available: id ? (document.getElementById('m-avail').checked ? 1 : 0) : 1
+  };
+  if (!body.name || !body.price) return showModalMsg('Name and price are required!', false);
+  const url = id ? `${API}/menu/update/${id}` : `${API}/menu/add`;
+  const method = id ? 'PUT' : 'POST';
+  const res = await fetch(url, { method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+  const data = await res.json();
+  showModalMsg(data.message, data.success);
+  if (data.success) setTimeout(() => { closeModal(); loadMenuMgr(); }, 800);
+}
+
+async function deleteItem(id, name) {
+  if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  const res = await fetch(`${API}/menu/delete/${id}`, { method:'DELETE' });
+  const data = await res.json();
+  if (data.success) loadMenuMgr();
+}
+
+function showModalMsg(text, ok) {
+  const el = document.getElementById('modal-msg');
+  el.textContent = text;
+  el.className = `mt-3 text-sm text-center font-medium p-2 rounded-xl ${ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`;
+  el.classList.remove('hidden');
+}
+
+function logout() { localStorage.removeItem('user'); window.location.href = 'login.html'; }
+
+loadDashboard();
+setInterval(() => {
+  const page = document.getElementById('page-dashboard').classList.contains('hidden') ? null : 'dashboard';
+  if (page === 'dashboard') loadDashboard();
+}, 20000);
+</script>
+</body>
+</html>

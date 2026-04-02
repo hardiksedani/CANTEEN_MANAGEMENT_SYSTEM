@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Student - Canteen</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    * { font-family: 'Poppins', sans-serif; }
+    .tab-active { background: linear-gradient(135deg,#f97316,#ef4444); color:white; }
+    .card-hover { transition: all 0.2s; }
+    .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,0.1); }
+    .status-pending { background:#fef3c7; color:#d97706; }
+    .status-preparing { background:#dbeafe; color:#2563eb; }
+    .status-ready { background:#d1fae5; color:#059669; }
+    .status-delivered { background:#f0fdf4; color:#16a34a; }
+    .status-cancelled { background:#fee2e2; color:#dc2626; }
+    ::-webkit-scrollbar { width:6px; } ::-webkit-scrollbar-thumb { background:#e5e7eb; border-radius:3px; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-white shadow-sm sticky top-0 z-40 border-b border-gray-100">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center text-xl shadow">🍴</div>
+        <div>
+          <h1 class="font-bold text-gray-800 leading-tight">College Canteen</h1>
+          <p class="text-xs text-gray-400">Order fresh, eat happy</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="hidden sm:block text-right">
+          <p id="user-name" class="text-sm font-semibold text-gray-700"></p>
+          <p id="user-id" class="text-xs text-gray-400"></p>
+        </div>
+        <button onclick="showCart()" class="relative bg-orange-500 text-white p-2.5 rounded-xl shadow hover:bg-orange-600 transition">
+          🛒
+          <span id="cart-badge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">0</span>
+        </button>
+        <button onclick="logout()" class="bg-gray-100 text-gray-600 px-3 py-2 rounded-xl text-sm hover:bg-gray-200 transition">Logout</button>
+      </div>
+    </div>
+    <!-- Tabs -->
+    <div class="max-w-7xl mx-auto px-4 pb-3 flex gap-2">
+      <button onclick="switchTab('menu')" id="tab-menu" class="tab-active px-5 py-2 rounded-xl text-sm font-semibold transition-all">🍽️ Menu</button>
+      <button onclick="switchTab('orders')" id="tab-orders" class="px-5 py-2 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-100 transition-all">📋 My Orders</button>
+    </div>
+  </nav>
+
+  <!-- Menu Tab -->
+  <div id="section-menu" class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Category Filter -->
+    <div class="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-none">
+      <button onclick="filterCat('All')" id="cat-All" class="flex-shrink-0 tab-active px-4 py-2 rounded-xl text-sm font-semibold">All</button>
+    </div>
+
+    <!-- Search -->
+    <div class="relative mb-6">
+      <input id="search-input" oninput="filterMenu()" type="text" placeholder="🔍  Search food items..."
+        class="w-full pl-4 pr-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-300 bg-white shadow-sm"/>
+    </div>
+
+    <!-- Menu Grid -->
+    <div id="menu-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+    <div id="menu-empty" class="hidden text-center py-20 text-gray-400">
+      <div class="text-6xl mb-4">🍽️</div>
+      <p class="text-xl font-semibold">No items found</p>
+    </div>
+  </div>
+
+  <!-- Orders Tab -->
+  <div id="section-orders" class="hidden max-w-4xl mx-auto px-4 py-6">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-xl font-bold text-gray-800">My Orders</h2>
+      <button onclick="loadMyOrders()" class="text-orange-500 text-sm font-semibold hover:underline">↻ Refresh</button>
+    </div>
+    <div id="orders-list" class="space-y-4"></div>
+    <div id="orders-empty" class="hidden text-center py-20 text-gray-400">
+      <div class="text-6xl mb-4">📋</div>
+      <p class="text-xl font-semibold">No orders yet</p>
+      <p class="text-sm mt-2">Go to menu and place your first order!</p>
+    </div>
+  </div>
+
+  <!-- Cart Sidebar -->
+  <div id="cart-overlay" onclick="hideCart()" class="hidden fixed inset-0 bg-black/40 z-40"></div>
+  <div id="cart-sidebar" class="fixed right-0 top-0 h-full w-full sm:w-96 bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 flex flex-col">
+    <div class="p-5 border-b border-gray-100 flex items-center justify-between">
+      <h2 class="text-xl font-bold text-gray-800">🛒 Your Cart</h2>
+      <button onclick="hideCart()" class="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+    </div>
+    <div id="cart-items" class="flex-1 overflow-y-auto p-5 space-y-3"></div>
+    <div id="cart-empty-msg" class="hidden flex-1 flex flex-col items-center justify-center text-gray-400 p-10">
+      <div class="text-5xl mb-3">🛒</div>
+      <p class="font-semibold">Cart is empty</p>
+      <p class="text-sm mt-1">Add items from the menu</p>
+    </div>
+    <div id="cart-footer" class="p-5 border-t border-gray-100 space-y-3">
+      <div>
+        <label class="text-sm font-medium text-gray-600 block mb-1">Special Instructions</label>
+        <input id="order-notes" type="text" placeholder="e.g. Less spicy, no onion..." class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"/>
+      </div>
+      <div>
+        <label class="text-sm font-medium text-gray-600 block mb-1">Payment Method</label>
+        <select id="payment-method" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+          <option value="cash">💵 Pay at Counter (Cash)</option>
+          <option value="wallet">💳 Wallet</option>
+        </select>
+      </div>
+      <div class="flex items-center justify-between text-lg font-bold text-gray-800 py-2">
+        <span>Total</span>
+        <span id="cart-total" class="text-orange-500">₹0</span>
+      </div>
+      <button onclick="placeOrder()" class="w-full py-3.5 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl font-bold hover:opacity-90 transition shadow-lg text-lg">
+        Place Order 🚀
+      </button>
+    </div>
+  </div>
+
+  <!-- Success Modal -->
+  <div id="success-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl">
+      <div class="text-6xl mb-4">🎉</div>
+      <h3 class="text-2xl font-bold text-gray-800 mb-2">Order Placed!</h3>
+      <p id="order-num-display" class="text-orange-500 font-bold text-lg mb-2"></p>
+      <p class="text-gray-500 text-sm mb-6">Your order is being prepared. Track it in "My Orders".</p>
+      <button onclick="closeSuccess()" class="w-full py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl font-bold">Track Order</button>
+    </div>
+  </div>
+
+<script>
+const API = 'http://localhost:5000/api';
+let user = JSON.parse(localStorage.getItem('user') || 'null');
+let menuItems = [];
+let cart = [];
+let currentCat = 'All';
+
+if (!user) window.location.href = 'login.html';
+if (user && user.role !== 'student') {
+  window.location.href = user.role === 'manager' ? 'manager.html' : 'staff.html';
+}
+
+// Init
+document.getElementById('user-name').textContent = user.name;
+document.getElementById('user-id').textContent = user.student_id || user.email;
+
+async function loadMenu() {
+  const res = await fetch(`${API}/menu`);
+  const data = await res.json();
+  menuItems = data.items;
+  // Build categories
+  const cats = ['All', ...new Set(menuItems.map(i => i.category))];
+  const bar = document.getElementById('cat-All').parentElement;
+  bar.innerHTML = cats.map(c =>
+    `<button onclick="filterCat('${c}')" id="cat-${c.replace(/\s/g,'_')}"
+      class="${c === 'All' ? 'tab-active' : 'bg-white border border-gray-200 text-gray-600 hover:border-orange-400'} flex-shrink-0 px-4 py-2 rounded-xl text-sm font-semibold transition-all">${c}</button>`
+  ).join('');
+  renderMenu();
+}
+
+function filterCat(cat) {
+  currentCat = cat;
+  document.querySelectorAll('[id^="cat-"]').forEach(b => {
+    b.className = 'flex-shrink-0 px-4 py-2 rounded-xl text-sm font-semibold transition-all bg-white border border-gray-200 text-gray-600 hover:border-orange-400';
+  });
+  const id = 'cat-' + cat.replace(/\s/g,'_');
+  if (document.getElementById(id))
+    document.getElementById(id).className = 'flex-shrink-0 tab-active px-4 py-2 rounded-xl text-sm font-semibold transition-all';
+  renderMenu();
+}
+
+function filterMenu() { renderMenu(); }
+
+function renderMenu() {
+  const search = document.getElementById('search-input').value.toLowerCase();
+  let items = menuItems.filter(i => {
+    const matchCat = currentCat === 'All' || i.category === currentCat;
+    const matchSearch = i.name.toLowerCase().includes(search) || i.category.toLowerCase().includes(search);
+    return matchCat && matchSearch;
+  });
+  const grid = document.getElementById('menu-grid');
+  const empty = document.getElementById('menu-empty');
+  if (items.length === 0) { grid.innerHTML = ''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  grid.innerHTML = items.map(item => {
+    const inCart = cart.find(c => c.menu_item_id === item.id);
+    const qty = inCart ? inCart.quantity : 0;
+    return `
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden card-hover">
+      <div class="h-32 bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center text-6xl">${item.image_emoji}</div>
+      <div class="p-4">
+        <span class="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium">${item.category}</span>
+        <h3 class="font-bold text-gray-800 mt-2 mb-1">${item.name}</h3>
+        <p class="text-xs text-gray-400 mb-3 line-clamp-2">${item.description || ''}</p>
+        <div class="flex items-center justify-between">
+          <span class="text-lg font-bold text-orange-500">₹${item.price}</span>
+          ${qty === 0
+            ? `<button onclick="addToCart(${item.id})" class="bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition">Add +</button>`
+            : `<div class="flex items-center gap-2">
+                <button onclick="changeQty(${item.id},-1)" class="w-8 h-8 bg-gray-100 rounded-lg text-gray-600 font-bold hover:bg-red-100 transition">−</button>
+                <span class="w-6 text-center font-bold text-gray-800">${qty}</span>
+                <button onclick="changeQty(${item.id},1)" class="w-8 h-8 bg-orange-500 rounded-lg text-white font-bold hover:bg-orange-600 transition">+</button>
+              </div>`
+          }
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addToCart(id) {
+  const item = menuItems.find(i => i.id === id);
+  cart.push({menu_item_id:id, item_name:item.name, unit_price:item.price, quantity:1});
+  updateCartBadge(); renderMenu(); updateCartUI();
+}
+
+function changeQty(id, delta) {
+  const idx = cart.findIndex(c => c.menu_item_id === id);
+  if (idx === -1) return;
+  cart[idx].quantity += delta;
+  if (cart[idx].quantity <= 0) cart.splice(idx,1);
+  updateCartBadge(); renderMenu(); updateCartUI();
+}
+
+function updateCartBadge() {
+  const total = cart.reduce((s,i) => s+i.quantity, 0);
+  const badge = document.getElementById('cart-badge');
+  badge.textContent = total;
+  badge.classList.toggle('hidden', total === 0);
+}
+
+function updateCartUI() {
+  const el = document.getElementById('cart-items');
+  const empty = document.getElementById('cart-empty-msg');
+  const footer = document.getElementById('cart-footer');
+  if (cart.length === 0) {
+    el.innerHTML=''; empty.classList.remove('hidden'); footer.classList.add('hidden'); return;
+  }
+  empty.classList.add('hidden'); footer.classList.remove('hidden');
+  const total = cart.reduce((s,i) => s + i.unit_price*i.quantity, 0);
+  document.getElementById('cart-total').textContent = '₹' + total.toFixed(2);
+  el.innerHTML = cart.map(item => `
+    <div class="flex items-center gap-3 bg-gray-50 rounded-2xl p-3">
+      <div class="flex-1">
+        <p class="font-semibold text-gray-800 text-sm">${item.item_name}</p>
+        <p class="text-orange-500 text-sm font-bold">₹${(item.unit_price*item.quantity).toFixed(2)}</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="changeQty(${item.menu_item_id},-1)" class="w-7 h-7 bg-white border border-gray-200 rounded-lg text-sm font-bold hover:bg-red-50 transition">−</button>
+        <span class="w-5 text-center text-sm font-bold">${item.quantity}</span>
+        <button onclick="changeQty(${item.menu_item_id},1)" class="w-7 h-7 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition">+</button>
+      </div>
+    </div>`).join('');
+}
+
+function showCart() {
+  updateCartUI();
+  document.getElementById('cart-overlay').classList.remove('hidden');
+  document.getElementById('cart-sidebar').classList.remove('translate-x-full');
+}
+function hideCart() {
+  document.getElementById('cart-overlay').classList.add('hidden');
+  document.getElementById('cart-sidebar').classList.add('translate-x-full');
+}
+
+async function placeOrder() {
+  if (cart.length === 0) return alert('Cart is empty!');
+  const payload = {
+    user_id: user.id, customer_name: user.name,
+    items: cart,
+    payment_method: document.getElementById('payment-method').value,
+    notes: document.getElementById('order-notes').value
+  };
+  const res = await fetch(`${API}/orders/place`, {
+    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if (data.success) {
+    cart = [];
+    updateCartBadge(); updateCartUI(); hideCart();
+    document.getElementById('order-num-display').textContent = data.order_number;
+    document.getElementById('success-modal').classList.remove('hidden');
+    renderMenu();
+  } else {
+    alert('Order failed: ' + data.message);
+  }
+}
+
+function closeSuccess() {
+  document.getElementById('success-modal').classList.add('hidden');
+  switchTab('orders');
+}
+
+async function loadMyOrders() {
+  const res = await fetch(`${API}/orders/my/${user.id}`);
+  const data = await res.json();
+  const list = document.getElementById('orders-list');
+  const empty = document.getElementById('orders-empty');
+  if (!data.orders || data.orders.length === 0) {
+    list.innerHTML=''; empty.classList.remove('hidden'); return;
+  }
+  empty.classList.add('hidden');
+  list.innerHTML = data.orders.map(o => `
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+      <div class="flex items-start justify-between mb-3">
+        <div>
+          <p class="font-bold text-gray-800">${o.order_number}</p>
+          <p class="text-xs text-gray-400">${new Date(o.created_at).toLocaleString()}</p>
+        </div>
+        <span class="status-${o.status} text-xs font-bold px-3 py-1 rounded-full capitalize">${o.status}</span>
+      </div>
+      <div class="space-y-1 mb-3">
+        ${o.items.map(i => `<div class="flex justify-between text-sm"><span class="text-gray-600">${i.item_name} × ${i.quantity}</span><span class="font-medium">₹${i.subtotal.toFixed(2)}</span></div>`).join('')}
+      </div>
+      <div class="flex justify-between items-center pt-3 border-t border-gray-100">
+        <span class="text-sm text-gray-500 capitalize">💳 ${o.payment_method}</span>
+        <span class="font-bold text-orange-500 text-lg">₹${o.total_amount.toFixed(2)}</span>
+      </div>
+      ${o.status === 'ready' ? '<div class="mt-2 bg-green-50 text-green-700 text-sm font-semibold text-center py-2 rounded-xl animate-pulse">✅ Your order is READY! Please collect.</div>' : ''}
+    </div>`).join('');
+}
+
+function switchTab(tab) {
+  document.getElementById('section-menu').classList.toggle('hidden', tab !== 'menu');
+  document.getElementById('section-orders').classList.toggle('hidden', tab !== 'orders');
+  document.getElementById('tab-menu').className = tab === 'menu'
+    ? 'tab-active px-5 py-2 rounded-xl text-sm font-semibold transition-all'
+    : 'px-5 py-2 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-100 transition-all';
+  document.getElementById('tab-orders').className = tab === 'orders'
+    ? 'tab-active px-5 py-2 rounded-xl text-sm font-semibold transition-all'
+    : 'px-5 py-2 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-100 transition-all';
+  if (tab === 'orders') loadMyOrders();
+}
+
+function logout() { localStorage.removeItem('user'); window.location.href = 'login.html'; }
+
+loadMenu();
+</script>
+</body>
+</html>
